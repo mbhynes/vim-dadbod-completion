@@ -68,7 +68,49 @@ let s:oracle = {
 \   'table_column_query': {table -> printf(s:oracle_base_column_query, "AND C.table_name='".table."'")},
 \ }
 
+if !exists('g:db_adapter_bigquery_region')
+  let g:db_adapter_bigquery_region = 'region-us'
+endif
+
+let s:bigquery_schemas_query = "SELECT schema_name FROM INFORMATION_SCHEMA.SCHEMATA" 
+
+let s:bigquery_column_query = printf("
+      \ SELECT table_name, column_name
+      \ FROM `%s`.INFORMATION_SCHEMA.COLUMNS
+      \ ", g:db_adapter_bigquery_region)
+
+let s:bigquery_count_column_query = printf("
+      \ SELECT count(*) as total
+      \ FROM `%s`.INFORMATION_SCHEMA.COLUMNS
+      \ ", g:db_adapter_bigquery_region)
+
+let s:bigquery_schema_tables_query = printf("
+      \ SELECT table_schema, table_name
+      \ FROM `%s`.INFORMATION_SCHEMA.TABLES
+      \ ", g:db_adapter_bigquery_region)
+
+let s:bigquery_table_column_query = printf("
+      \ SELECT table_schema, table_name
+      \ FROM `%s`.INFORMATION_SCHEMA.TABLES
+      \ WHERE TABLE_NAME={db_tbl_name}
+      \ ", g:db_adapter_bigquery_region)
+
+let s:bigquery = {
+      \ 'callable': 'filter',
+      \ 'args': ['--format=csv'],
+      \ 'schemes_query': s:bigquery_schemas_query,
+      \ 'schemes_tables_query': s:bigquery_schema_tables_query,
+      \ 'table_column_query': {table -> substitute(s:bigquery_table_column_query, '{db_tbl_name}', "'".table."'", '')},
+      \ 'column_query': s:bigquery_column_query,
+      \ 'count_column_query': s:bigquery_count_column_query,
+      \ 'requires_stdin': v:true,
+      \ 'column_parser': function('s:map_and_filter', [',']),
+      \ }
+
+let s:count_query = 'SELECT COUNT(*) AS total FROM INFORMATION_SCHEMA.COLUMNS'
+
 let s:schemas = {
+      \ 'bigquery': s:bigquery,
       \ 'postgres': s:postgres,
       \ 'postgresql': s:postgres,
       \ 'mysql': {
