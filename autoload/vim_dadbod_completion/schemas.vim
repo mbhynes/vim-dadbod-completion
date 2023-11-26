@@ -75,10 +75,10 @@ endif
 function! s:bigquery_table_column_query(table) abort
   let parts = split(substitute(table, '`', '', 'g'), '.')
   let table_name = parts[-1]
-  if len(parts) == 3:
+  if len(parts) == 3
      let project = printf('`%s.`', parts[0])
      let database = print('%s.', parts[1])
-  elseif len(parts) == 2:
+  elseif len(parts) == 2
      let project = g:db_adapter_bigquery_region
      let database = print('%s.', parts[0])
   else
