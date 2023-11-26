@@ -160,6 +160,10 @@ function! vim_dadbod_completion#fetch(bufnr) abort
     let s:buffers[a:bufnr] = {}
     return
   endif
+  if !exists('g:db_adapter_bigquery')
+    let g:db_adapter_bigquery = 'db#adapter#bigquery#'
+  endif
+
   if !exists('g:db_adapter_postgres')
     let g:db_adapter_postgres = 'db#adapter#postgresql#'
   endif

@@ -68,7 +68,62 @@ let s:oracle = {
 \   'table_column_query': {table -> printf(s:oracle_base_column_query, "AND C.table_name='".table."'")},
 \ }
 
+if !exists('g:db_adapter_bigquery_region')
+  let g:db_adapter_bigquery_region = 'region-us'
+endif
+
+function! s:bigquery_table_column_query(table) abort
+  let parts = split(substitute(table, '`', '', 'g'), '.')
+  let table_name = parts[-1]
+  if len(parts) == 3
+     let project = printf('`%s.`', parts[0])
+     let database = print('%s.', parts[1])
+  elseif len(parts) == 2
+     let project = g:db_adapter_bigquery_region
+     let database = print('%s.', parts[0])
+  else
+     let project = ''
+     let database = printf(`%s`, g:db_adapter_bigquery_region)
+  endif
+  let query = printf("
+      \ SELECT table_name, column_name
+      \ FROM %s%s.INFORMATION_SCHEMA.COLUMNS
+      \ WHERE TABLE_NAME='%s'
+      \ ", project, database, table_name)
+  echoerr(query)
+  return query
+
+endfunction
+
+let s:bigquery_schemas_query = "SELECT schema_name FROM INFORMATION_SCHEMA.SCHEMATA" 
+
+let s:bigquery_column_query = printf("
+      \ SELECT table_name, column_name
+      \ FROM `%s`.INFORMATION_SCHEMA.COLUMNS
+      \ ", g:db_adapter_bigquery_region)
+
+let s:bigquery_count_column_query = printf("
+      \ SELECT count(*) as total
+      \ FROM `%s`.INFORMATION_SCHEMA.COLUMNS
+      \ ", g:db_adapter_bigquery_region)
+
+let s:bigquery = {
+      \ 'args': ['--format=csv'],
+      \ 'requires_stdin': v:true,
+      \ 'count_column_query': s:bigquery_count_column_query,
+      \ 'count_parser': function('s:count_parser', [1])
+      \ 'schemas_query': s:bigquery_schemas_query,
+      \ 'schemas_parser':function('s:map_and_filter', [',']),
+      \ 'column_query': s:bigquery_column_query,
+      \ 'column_parser':function('s:map_and_filter', [',']),
+      \ 'table_column_query': {table -> s:bigquery_table_column_query(table)},
+      \ 'count_column_query': s:bigquery_count_column_query,
+      \ }
+
+let s:count_query = 'SELECT COUNT(*) AS total FROM INFORMATION_SCHEMA.COLUMNS'
+
 let s:schemas = {
+      \ 'bigquery': s:bigquery,
       \ 'postgres': s:postgres,
       \ 'postgresql': s:postgres,
       \ 'mysql': {
